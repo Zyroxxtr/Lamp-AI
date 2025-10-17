@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akıllı Sohbet Robotu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+        }
+        .screen.hidden {
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+        
+        .features-list {
+            transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .features-list.active {
+            max-height: 500px;
+            opacity: 1;
+        }
+
+        @keyframes animate-gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .animated-gradient {
+            background-size: 200% 200%;
+            animation: animate-gradient 6s ease infinite;
+        }
+
+        @keyframes rgb-animation {
+            0% { background-position: left; }
+            100% { background-position: right; }
+        }
+        .rgb-text {
+            background: linear-gradient(90deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+            background-size: 200% auto;
+            color: transparent;
+            background-clip: text;
+            -webkit-background-clip: text;
+            animation: rgb-animation 4s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center h-screen p-4 overflow-hidden">
+
+    <div class="w-full max-w-2xl h-full max-h-[700px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl relative overflow-hidden">
+
+        <!-- Ana Menü Ekranı -->
+        <div id="home-screen" class="screen flex flex-col items-center justify-center p-8">
+            <div class="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-5xl mb-6 shadow-xl animated-gradient ring-4 ring-white/10 dark:ring-black/20">
+                AI
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-2" data-lang-key="welcome_title">Lamp AI Asistanı</h1>
+            <p class="text-gray-500 dark:text-gray-400 mb-10" data-lang-key="welcome_subtitle">Size nasıl yardımcı olabilirim?</p>
+            <div class="w-full max-w-xs space-y-4">
+                <button id="to-chat-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 text-lg transform hover:scale-105 hover:shadow-lg hover:shadow-blue-500/50" data-lang-key="ask_question">Soru Sor</button>
+                <button id="to-settings-btn" class="w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 text-lg transform hover:scale-105 hover:shadow-lg hover:shadow-gray-500/50" data-lang-key="settings">Ayarlar</button>
+            </div>
+        </div>
+
+        <!-- Sohbet Ekranı -->
+        <div id="chat-screen" class="screen hidden flex flex-col">
+            <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                     <button class="back-button text-gray-500 hover:text-gray-700" data-target="home-screen">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <h1 class="text-xl font-bold text-gray-800 dark:text-white" data-lang-key="main_title">Lamp AI Asistanınız</h1>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="new-chat-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                    </button>
+                    <span id="header-username" class="font-semibold text-sm text-gray-700 dark:text-gray-300 hidden sm:block">Kullanıcı</span>
+                    <div id="header-profile-pic" class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                    </div>
+                    <span id="version-badge" class="bg-yellow-200 dark:bg-yellow-700 text-yellow-800 dark:text-yellow-100 text-xs font-bold px-2 py-1 rounded-md">Free Version</span>
+                </div>
+            </div>
+            <div id="chat-window" class="flex-grow p-6 overflow-y-auto scrollbar-hide space-y-4">
+            </div>
+            <div class="p-5 border-t border-gray-200 dark:border-gray-700">
+                <form id="message-form" class="flex items-center space-x-4">
+                    <input type="text" id="message-input" data-lang-key="message_placeholder" placeholder="Mesajınızı buraya yazın..." autocomplete="off" class="flex-grow p-3 bg-gray-100 dark:bg-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-xl flex items-center" data-lang-key="send">
+                        Gönder <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Ayarlar Ekranı -->
+        <div id="settings-screen" class="screen hidden flex flex-col p-8 items-center">
+             <div class="w-full flex items-center mb-10">
+                <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="home-screen">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white" data-lang-key="settings">Ayarlar</h2>
+            </div>
+            <div class="w-full max-w-xs space-y-4">
+                <button class="nav-button w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 font-bold py-3 rounded-lg" data-target="language-screen" data-lang-key="languages">Diller</button>
+                <button class="nav-button w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 font-bold py-3 rounded-lg" data-target="my-chats-screen" data-lang-key="my_chats">Sohbetlerim</button>
+                <button class="nav-button w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 font-bold py-3 rounded-lg" data-target="membership-screen" data-lang-key="memberships">Üyelikler</button>
+                <button class="nav-button w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 font-bold py-3 rounded-lg" data-target="profile-screen" data-lang-key="profile">Profil</button>
+            </div>
+        </div>
+
+        <!-- Sohbetlerim Ekranı -->
+        <div id="my-chats-screen" class="screen hidden flex flex-col p-8">
+            <div class="w-full flex items-center mb-6">
+                <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="settings-screen">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 class="text-2xl font-bold" data-lang-key="my_chats">Sohbetlerim</h2>
+            </div>
+            <ul id="chat-list" class="space-y-2 overflow-y-auto">
+                <!-- Sohbetler buraya eklenecek -->
+            </ul>
+        </div>
+
+        <!-- Diller Ekranı -->
+        <div id="language-screen" class="screen hidden flex flex-col p-8 items-center">
+            <div class="w-full flex items-center mb-10">
+               <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="settings-screen">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+               </button>
+               <h2 class="text-2xl font-bold" data-lang-key="languages">Diller</h2>
+            </div>
+            <div class="w-full max-w-xs space-y-4">
+                <button class="lang-button w-full bg-blue-100 dark:bg-blue-900 font-bold py-3 rounded-lg border-2 border-blue-500" data-lang="tr">Türkçe</button>
+                <button class="lang-button w-full bg-gray-200 dark:bg-gray-700 font-bold py-3 rounded-lg" data-lang="en">English</button>
+                <button class="lang-button w-full bg-gray-200 dark:bg-gray-700 font-bold py-3 rounded-lg" data-lang="de">Deutsch</button>
+            </div>
+        </div>
+        
+        <!-- Üyelikler Ekranı -->
+        <div id="membership-screen" class="screen hidden flex flex-col p-8">
+            <div class="w-full flex items-center mb-6">
+                <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="settings-screen">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 class="text-2xl font-bold" data-lang-key="memberships">Üyelikler</h2>
+            </div>
+             <div class="space-y-4">
+                <div class="border rounded-lg p-4 cursor-pointer" data-plan="plus">
+                    <h3 class="font-bold text-lg">Plus - $5/month</h3>
+                    <ul class="features-list text-sm text-gray-600 dark:text-gray-400 mt-2" data-lang-key="plus_features_list">
+                    </ul>
+                </div>
+                 <div class="border rounded-lg p-4 cursor-pointer" data-plan="premium">
+                    <h3 class="font-bold text-lg">Premium - $15/month</h3>
+                    <ul class="features-list text-sm text-gray-600 dark:text-gray-400 mt-2" data-lang-key="premium_features_list">
+                    </ul>
+                </div>
+            </div>
+             <div class="mt-auto text-center">
+                <button id="upgrade-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg" data-lang-key="upgrade_now">Şimdi Yükselt</button>
+            </div>
+        </div>
+
+        <!-- Profil Ekranı -->
+        <div id="profile-screen" class="screen hidden flex flex-col p-8 items-center">
+             <div class="w-full flex items-center mb-10">
+                <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="settings-screen">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 class="text-2xl font-bold" data-lang-key="profile">Profil</h2>
+            </div>
+            
+            <div id="profile-pic-container" class="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-4 ring-4 ring-blue-500/50 cursor-pointer overflow-hidden">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <input type="file" id="profile-pic-input" class="hidden" accept="image/*">
+
+            <h3 id="username-display" class="text-2xl font-bold text-gray-800 dark:text-white">Kullanıcı</h3>
+            <p id="plan-display" class="text-sm text-gray-500 dark:text-gray-400 mb-6">Free Version</p>
+
+            <div class="w-full max-w-sm">
+                <div id="rgb-toggle-container" class="hidden flex items-center justify-between bg-gray-100 dark:bg-gray-700 rounded-lg p-3 mb-6">
+                    <span class="font-medium text-gray-700 dark:text-gray-300" data-lang-key="rgb_name">RGB İsim</span>
+                    <label class="flex items-center cursor-pointer">
+                        <div class="relative">
+                            <input type="checkbox" id="rgb-toggle" class="sr-only">
+                            <div class="block bg-gray-300 dark:bg-gray-600 w-14 h-8 rounded-full transition"></div>
+                            <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform"></div>
+                        </div>
+                    </label>
+                </div>
+
+                <label for="username-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" data-lang-key="enter_name">İsminizi Girin:</label>
+                <input type="text" id="username-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700">
+                <button id="save-username-btn" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-md" data-lang-key="save">Kaydet</button>
+                <p id="save-confirm-msg" class="text-green-500 text-sm mt-2 text-center opacity-0 transition-opacity" data-lang-key="name_saved">İsim kaydedildi!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // --- ELEMENT REFERANSLARI ---
+    const screens = document.querySelectorAll('.screen');
+    const navButtons = document.querySelectorAll('.nav-button');
+    const backButtons = document.querySelectorAll('.back-button');
+    const langButtons = document.querySelectorAll('.lang-button');
+    const membershipPlanDivs = document.querySelectorAll('#membership-screen [data-plan]');
+    const upgradeButton = document.getElementById('upgrade-button');
+    const versionBadge = document.getElementById('version-badge');
+    const chatWindow = document.getElementById('chat-window');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const chatList = document.getElementById('chat-list');
+    // Header Profil Elementleri
+    const headerUsername = document.getElementById('header-username');
+    const headerProfilePic = document.getElementById('header-profile-pic');
+    // Profil Ekranı Elementleri
+    const profilePicContainer = document.getElementById('profile-pic-container');
+    const profilePicInput = document.getElementById('profile-pic-input');
+    const usernameDisplay = document.getElementById('username-display');
+    const planDisplay = document.getElementById('plan-display');
+    const usernameInput = document.getElementById('username-input');
+    const saveUsernameBtn = document.getElementById('save-username-btn');
+    const saveConfirmMsg = document.getElementById('save-confirm-msg');
+    const rgbToggleContainer = document.getElementById('rgb-toggle-container');
+    const rgbToggle = document.getElementById('rgb-toggle');
+
+
+    // --- STATE (DURUM) YÖNETİMİ ---
+    let currentScreen = 'home-screen';
+    let activePlan = 'free';
+    let currentLanguage = 'tr';
+    let selectedUpgradePlan = 'plus';
+    let userName = 'Kullanıcı';
+    let userProfilePic = null;
+    let isRgbEnabled = true;
+    let chats = [];
+    let activeChatId = null;
+
+    // --- DİL VERİLERİ ---
+    const translations = {
+        tr: {
+            welcome_title: "Lamp AI Asistanı", welcome_subtitle: "Size nasıl yardımcı olabilirim?", ask_question: "Soru Sor", settings: "Ayarlar",
+            main_title: "Lamp AI Asistanınız", welcome_message: "Merhaba Ben Sizin Lamp AI yapay zekanızım bana soru sorabilirsiniz merak ettiğiniz herşeyi sorabilirsiniz",
+            message_placeholder: "Mesajınızı buraya yazın...", send: "Gönder", languages: "Diller", memberships: "Üyelikler", profile: "Profil", my_chats: "Sohbetlerim",
+            enter_name: "İsminizi Girin:", save: "Kaydet", name_saved: "İsim kaydedildi!", rgb_name: "RGB İsim",
+            upgrade_now: "Şimdi Yükselt", new_chat: "Yeni Sohbet",
+            plus_features_list: `<li>- Daha zeki cevaplar</li><li>- Resim yapabilme ve çizebilme</li><li>- Ses dosyası hazırlama</li>`,
+            premium_features_list: `<li>- Ciddi araştırma & Hızlı cevaplar</li><li>- Müzik ve Ses dosyası yapma</li><li>- Video ve Animasyon Senaryosu Oluşturma</li><li>- Program, Oyun, Yazılım yapma</li>`,
+            upgrade_alert_plus: "'resim', 'çiz' gibi özellikleri kullanmak için lütfen Plus veya Premium sürüme yükseltin.",
+            upgrade_alert_premium: "'video', 'müzik', 'animasyon' veya 'program' gibi özellikleri kullanmak için lütfen Premium sürüme yükseltin."
+        },
+        en: {
+            welcome_title: "Lamp AI Assistant", welcome_subtitle: "How can I help you?", ask_question: "Ask a Question", settings: "Settings",
+            main_title: "Your Lamp AI Assistant", welcome_message: "Hello! I am your Lamp AI assistant. You can ask me anything you're curious about.",
+            message_placeholder: "Type your message here...", send: "Send", languages: "Languages", memberships: "Memberships", profile: "Profile", my_chats: "My Chats",
+            enter_name: "Enter Your Name:", save: "Save", name_saved: "Name saved!", rgb_name: "RGB Name",
+            upgrade_now: "Upgrade Now", new_chat: "New Chat",
+            plus_features_list: `<li>- Smarter answers</li><li>- Ability to create and draw images</li><li>- Audio file preparation</li>`,
+            premium_features_list: `<li>- In-depth research & Fast answers</li><li>- Music & Audio file creation</li><li>- Video & Animation Script Creation</li><li>- Program, Game, Software development</li>`,
+            upgrade_alert_plus: "To use features like 'image' or 'draw', please upgrade to Plus or Premium.",
+            upgrade_alert_premium: "To use features like 'video', 'music', 'animation', or 'program', please upgrade to Premium."
+        },
+        de: {
+            welcome_title: "Lamp KI-Assistent", welcome_subtitle: "Wie kann ich Ihnen helfen?", ask_question: "Frage stellen", settings: "Einstellungen",
+            main_title: "Ihr Lamp KI-Assistent", welcome_message: "Hallo! Ich bin Ihr Lamp KI-Assistent. Sie können mich alles fragen, was Sie neugierig macht.",
+            message_placeholder: "Geben Sie hier Ihre Nachricht ein...", send: "Senden", languages: "Sprachen", memberships: "Mitgliedschaften", profile: "Profil", my_chats: "Meine Chats",
+            enter_name: "Geben Sie Ihren Namen ein:", save: "Speichern", name_saved: "Name gespeichert!", rgb_name: "RGB-Name",
+            upgrade_now: "Jetzt upgraden", new_chat: "Neuer Chat",
+            plus_features_list: `<li>- Intelligentere Antworten</li><li>- Fähigkeit, Bilder zu erstellen und zu zeichnen</li><li>- Erstellung von Audiodateien</li>`,
+            premium_features_list: `<li>- Gründliche Recherche & Schnelle Antworten</li><li>- Musik- & Audiodatei-Erstellung</li><li>- Video- & Animationsskript-Erstellung</li><li>- Programm-, Spiel-, Software-Entwicklung</li>`,
+            upgrade_alert_plus: "Um Funktionen wie 'Bild' oder 'zeichnen' zu nutzen, upgraden Sie bitte auf Plus oder Premium.",
+            upgrade_alert_premium: "Um Funktionen wie 'Video', 'Musik', 'Animation' oder 'Programm' zu nutzen, upgraden Sie bitte auf Premium."
+        }
+    };
+
+    // --- YEREL DEPOLAMA (LOCAL STORAGE) İŞLEMLERİ ---
+    function loadSettingsFromStorage() {
+        const savedName = localStorage.getItem('lampAiUserName');
+        if (savedName) userName = savedName;
+
+        const savedPic = localStorage.getItem('lampAiProfilePic');
+        if (savedPic) userProfilePic = savedPic;
+
+        const savedPlan = localStorage.getItem('lampAiActivePlan');
+        if (savedPlan) activePlan = savedPlan;
+        
+        const savedRgb = localStorage.getItem('lampAiRgbState');
+        if (savedRgb !== null) isRgbEnabled = JSON.parse(savedRgb);
+
+        const savedLang = localStorage.getItem('lampAiLanguage');
+        setLanguage(savedLang || 'tr');
+        
+        const savedChats = localStorage.getItem('lampAiChats');
+        chats = savedChats ? JSON.parse(savedChats) : [];
+
+        const savedActiveChatId = localStorage.getItem('lampAiActiveChatId');
+        activeChatId = savedActiveChatId;
+
+        if (chats.length === 0) {
+            createNewChat(false); 
+        } else if (!activeChatId || !chats.find(c => c.id === activeChatId)) {
+            activeChatId = chats[0].id;
+            localStorage.setItem('lampAiActiveChatId', activeChatId);
+        }
+
+        updateUIAfterLoad();
+    }
+
+    function saveChatsToStorage() {
+        localStorage.setItem('lampAiChats', JSON.stringify(chats));
+    }
+
+    function updateUIAfterLoad() {
+        versionBadge.classList.remove('bg-yellow-200', 'text-yellow-800', 'dark:bg-yellow-700', 'dark:text-yellow-100', 'bg-green-200', 'text-green-800', 'dark:bg-green-700', 'dark:text-green-100', 'bg-purple-200', 'text-purple-800', 'dark:bg-purple-700', 'dark:text-purple-100');
+        if (activePlan === 'plus') {
+            versionBadge.textContent = 'Plus Version';
+            versionBadge.classList.add('bg-green-200', 'text-green-800', 'dark:bg-green-700', 'dark:text-green-100');
+        } else if (activePlan === 'premium') {
+            versionBadge.textContent = 'Premium Version';
+            versionBadge.classList.add('bg-purple-200', 'text-purple-800', 'dark:bg-purple-700', 'dark:text-purple-100');
+        } else {
+             versionBadge.textContent = 'Free Version';
+            versionBadge.classList.add('bg-yellow-200', 'text-yellow-800', 'dark:bg-yellow-700', 'dark:text-yellow-100');
+        }
+        updateProfileDisplay();
+    }
+
+    // --- NAVİGASYON ---
+    function showScreen(screenId) {
+        const targetScreen = document.getElementById(screenId);
+        const currentActiveScreen = document.getElementById(currentScreen);
+
+        if (currentActiveScreen && targetScreen) {
+            currentActiveScreen.classList.add('hidden');
+            targetScreen.classList.remove('hidden');
+            currentScreen = screenId;
+        }
+        if (screenId === 'profile-screen' || screenId === 'chat-screen') {
+            updateProfileDisplay();
+        }
+        if (screenId === 'my-chats-screen') {
+            populateChatList();
+        }
+         if (screenId === 'chat-screen') {
+            displayActiveChat();
+        }
+    }
+    
+    document.getElementById('to-chat-btn').addEventListener('click', () => showScreen('chat-screen'));
+    document.getElementById('to-settings-btn').addEventListener('click', () => showScreen('settings-screen'));
+
+    navButtons.forEach(btn => btn.addEventListener('click', () => showScreen(btn.dataset.target)));
+    backButtons.forEach(btn => btn.addEventListener('click', () => showScreen(btn.dataset.target)));
+
+
+    // --- DİL DEĞİŞTİRME ---
+    function setLanguage(lang) {
+        if (!translations[lang]) return;
+        currentLanguage = lang;
+        localStorage.setItem('lampAiLanguage', lang);
+        
+        document.querySelectorAll('[data-lang-key]').forEach(el => {
+            const key = el.dataset.langKey;
+            if (translations[lang][key]) {
+                if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    el.placeholder = translations[lang][key];
+                } else if (el.classList.contains('features-list')) {
+                    el.innerHTML = translations[lang][key];
+                }
+                else {
+                    el.textContent = translations[lang][key];
+                }
+            }
+        });
+
+        langButtons.forEach(btn => {
+            if (btn.dataset.lang === lang) {
+                btn.classList.add('bg-blue-100', 'dark:bg-blue-900', 'border-2', 'border-blue-500');
+                btn.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+            } else {
+                btn.classList.remove('bg-blue-100', 'dark:bg-blue-900', 'border-2', 'border-blue-500');
+                btn.classList.add('bg-gray-200', 'dark:bg-gray-700');
+            }
+        });
+    }
+
+    langButtons.forEach(btn => btn.addEventListener('click', () => setLanguage(btn.dataset.lang)));
+
+    // --- PROFİL İŞLEMLERİ ---
+    function updateProfileDisplay() {
+        const defaultIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>`;
+        const headerDefaultIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>`;
+        
+        if (userProfilePic) {
+            profilePicContainer.innerHTML = `<img src="${userProfilePic}" class="w-full h-full object-cover rounded-full">`;
+            headerProfilePic.innerHTML = `<img src="${userProfilePic}" class="w-full h-full object-cover">`;
+        } else {
+            profilePicContainer.innerHTML = defaultIcon;
+            headerProfilePic.innerHTML = headerDefaultIcon;
+        }
+        
+        usernameDisplay.textContent = userName;
+        headerUsername.textContent = userName;
+        usernameInput.value = userName;
+        planDisplay.textContent = `${activePlan.charAt(0).toUpperCase() + activePlan.slice(1)} Version`;
+
+        if (activePlan === 'plus' || activePlan === 'premium') {
+            rgbToggleContainer.classList.remove('hidden');
+        } else {
+            rgbToggleContainer.classList.add('hidden');
+        }
+        
+        rgbToggle.checked = isRgbEnabled;
+        const dot = rgbToggle.parentElement.querySelector('.dot');
+        const bg = dot.previousElementSibling;
+        if (rgbToggle.checked) {
+            dot.style.transform = 'translateX(1.5rem)';
+            bg.classList.remove('bg-gray-300', 'dark:bg-gray-600');
+            bg.classList.add('bg-blue-600');
+        } else {
+            dot.style.transform = 'translateX(0)';
+            bg.classList.add('bg-gray-300', 'dark:bg-gray-600');
+            bg.classList.remove('bg-blue-600');
+        }
+
+        usernameDisplay.classList.remove('rgb-text', 'text-gray-800', 'dark:text-white');
+        if ((activePlan === 'plus' || activePlan === 'premium') && isRgbEnabled) {
+            usernameDisplay.classList.add('rgb-text');
+        } else {
+            usernameDisplay.classList.add('text-gray-800', 'dark:text-white');
+        }
+    }
+
+    profilePicContainer.addEventListener('click', () => profilePicInput.click());
+
+    profilePicInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                userProfilePic = e.target.result;
+                localStorage.setItem('lampAiProfilePic', userProfilePic);
+                updateProfileDisplay();
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    rgbToggle.addEventListener('change', () => {
+        isRgbEnabled = rgbToggle.checked;
+        localStorage.setItem('lampAiRgbState', isRgbEnabled);
+        updateProfileDisplay();
+    });
+
+    saveUsernameBtn.addEventListener('click', () => {
+        const newName = usernameInput.value.trim();
+        if (newName) {
+            userName = newName;
+            localStorage.setItem('lampAiUserName', userName);
+            updateProfileDisplay();
+            saveConfirmMsg.classList.remove('opacity-0');
+            setTimeout(() => {
+                saveConfirmMsg.classList.add('opacity-0');
+            }, 2000);
+        }
+    });
+
+    // --- ÜYELİK İŞLEMLERİ ---
+    membershipPlanDivs.forEach(div => {
+        div.addEventListener('click', () => {
+            selectedUpgradePlan = div.dataset.plan;
+            membershipPlanDivs.forEach(d => {
+                d.classList.remove('border-blue-500', 'border-2');
+                d.querySelector('.features-list').classList.remove('active');
+            });
+            div.classList.add('border-blue-500', 'border-2');
+            div.querySelector('.features-list').classList.add('active');
+        });
+    });
+
+    upgradeButton.addEventListener('click', () => {
+        activePlan = selectedUpgradePlan;
+        localStorage.setItem('lampAiActivePlan', activePlan);
+        updateUIAfterLoad();
+        showScreen('settings-screen');
+    });
+
+
+    // --- SOHBET MANTIĞI ---
+    let warningCount = 0;
+    let isBanned = false;
+    let banEndTime = 0;
+    const inappropriateWords = ["aptal", "salak", "gerizekalı", "lan", "küfür1", "küfür2"];
+    
+    newChatBtn.addEventListener('click', () => createNewChat(true));
+
+    chatList.addEventListener('click', (e) => {
+        const chatItem = e.target.closest('li');
+        if (chatItem && chatItem.dataset.chatId) {
+            loadChat(chatItem.dataset.chatId);
+        }
+    });
+    
+    function createNewChat(switchToScreen = true) {
+        const newChat = {
+            id: Date.now().toString(),
+            messages: [{
+                sender: 'ai',
+                content: translations[currentLanguage].welcome_message
+            }]
+        };
+        chats.unshift(newChat);
+        activeChatId = newChat.id;
+        localStorage.setItem('lampAiActiveChatId', activeChatId);
+        saveChatsToStorage();
+        if (switchToScreen) {
+            displayActiveChat();
+            showScreen('chat-screen');
+        }
+    }
+
+    function loadChat(chatId) {
+        activeChatId = chatId;
+        localStorage.setItem('lampAiActiveChatId', activeChatId);
+        displayActiveChat();
+        showScreen('chat-screen');
+    }
+
+    function populateChatList() {
+        chatList.innerHTML = '';
+        if (chats.length === 0) {
+            chatList.innerHTML = `<li class="text-center text-gray-500">${translations[currentLanguage].no_chats_yet || 'Henüz sohbet yok.'}</li>`;
+            return;
+        }
+        chats.forEach(chat => {
+            const firstUserMessage = chat.messages.find(m => m.sender === 'user');
+            const title = firstUserMessage ? firstUserMessage.content.substring(0, 30) + '...' : translations[currentLanguage].new_chat;
+            const li = document.createElement('li');
+            li.className = 'p-3 bg-gray-100 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900';
+            li.textContent = title;
+            li.dataset.chatId = chat.id;
+            chatList.appendChild(li);
+        });
+    }
+
+    function displayActiveChat() {
+        chatWindow.innerHTML = '';
+        const activeChat = chats.find(c => c.id === activeChatId);
+        if (activeChat) {
+            activeChat.messages.forEach(msg => renderMessage(msg.content, msg.sender));
+        }
+    }
+
+    function renderMessage(content, sender) {
+        const messageContainer = document.createElement('div');
+        const messageBubble = document.createElement('div');
+        messageBubble.innerHTML = content;
+        
+        if (sender === 'user') {
+            messageContainer.className = 'flex justify-end';
+            messageBubble.className = 'bg-blue-600 text-white p-3 rounded-l-lg rounded-tr-lg max-w-xs md:max-w-md';
+        } else if (sender === 'system') {
+            messageContainer.className = 'flex justify-center';
+            messageBubble.className = 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 p-3 rounded-lg max-w-sm md:max-w-lg text-center text-sm';
+        } else {
+            messageContainer.className = 'flex justify-start';
+            messageBubble.className = 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-r-lg rounded-tl-lg max-w-xs md:max-w-md';
+        }
+        messageContainer.appendChild(messageBubble);
+        chatWindow.appendChild(messageContainer);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+    
+    function addMessage(content, sender) {
+        const activeChat = chats.find(c => c.id === activeChatId);
+        if (activeChat) {
+            activeChat.messages.push({ content, sender });
+            saveChatsToStorage();
+        }
+        renderMessage(content, sender);
+    }
+
+    messageForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const userMessage = messageInput.value.trim();
+
+        if (isBanned && Date.now() < banEndTime) return;
+
+        if (userMessage) {
+            const hasInappropriateWord = inappropriateWords.some(word => userMessage.toLowerCase().includes(word));
+            if (hasInappropriateWord) {
+                 warningCount++;
+                 if (warningCount >= 3) { isBanned = true; banEndTime = Date.now() + 5 * 60 * 1000; }
+                 addMessage("Lütfen uygun dil kullanın.", 'system');
+            } else if (!featureRestrictionCheck(userMessage)) {
+                addMessage(userMessage, 'user');
+                getAIResponse(userMessage);
+            }
+            messageInput.value = '';
+        }
+    });
+
+    function featureRestrictionCheck(userInput) {
+        const lowerCaseInput = userInput.toLowerCase();
+        if (activePlan === 'premium') return false;
+        
+        const plusKeywords = ['resim', 'çiz', 'fotoğraf', 'görsel', 'image', 'draw', 'picture', 'photo', 'Bild', 'zeichnen'];
+        const premiumKeywords = ['müzik', 'şarkı', 'rap', 'türkü', 'ses', 'video', 'program', 'oyun', 'yazılım', 'animasyon', 'music', 'song', 'audio', 'Musik', 'Lied', 'animation'];
+
+        if (premiumKeywords.some(kw => lowerCaseInput.includes(kw))) {
+            addMessage(translations[currentLanguage].upgrade_alert_premium, 'system');
+            return true;
+        }
+        if (activePlan === 'free' && plusKeywords.some(kw => lowerCaseInput.includes(kw))) {
+            addMessage(translations[currentLanguage].upgrade_alert_plus, 'system');
+            return true;
+        }
+        return false;
+    }
+
+    // --- API İLETİŞİMİ ---
+    async function getAIResponse(userInput) {
+        addMessage('...', 'ai'); 
+        const placeholderContainer = chatWindow.lastChild; 
+
+        const lowerCaseInput = userInput.toLowerCase();
+        if (['adın ne', 'ismin ne', 'sen kimsin', 'what is your name', 'who are you', 'wie ist dein name', 'wer bist du'].some(q => lowerCaseInput.includes(q))) {
+            const aiResponse = "Ben Lamp AI.";
+            placeholderContainer.remove();
+            const activeChat = chats.find(c => c.id === activeChatId);
+            if (activeChat) activeChat.messages.pop();
+            addMessage(aiResponse, 'ai');
+            return;
+        }
+
+        const apiKey = "";
+        let apiUrl, payload;
+
+        const prompts = {
+            tr: {
+                free: `Sen 'Lamp AI'ın temel versiyonusun. Adın sorulursa 'Lamp AI' de. Kullanıcının adı '${userName}'. Ona bu isimle hitap et. Sadece Türkçe cevap ver.`,
+                plus: `Sen 'Lamp AI'ın Plus versiyonusun. Adın sorulursa 'Lamp AI' de. Resim ve çizim yapabilirsin. Kullanıcının adı '${userName}'. Ona bu isimle hitap et. Sadece Türkçe cevap ver.`,
+                premium: `Sen 'Lamp AI'ın Premium versiyonusun. Adın sorulursa 'Lamp AI' de. Müzik isteklerinde şarkı sözü yazıp ses dosyası hazırlarsın. Video, 2D animasyon veya 3D animasyon istekleri aldığında, doğrudan video dosyası üretemediğini belirtirsin, ancak bunun yerine isteği detaylı bir senaryo, sahne açıklamaları veya storyboard formatında metin olarak hazırlarsın. Kullanıcının adı '${userName}'. Ona bu isimle hitap et. Sadece Türkçe cevap ver.`
+            },
+            en: {
+                free: `You are the basic version of 'Lamp AI'. If asked your name, say 'Lamp AI'. The user's name is '${userName}'. Address them by this name. Respond ONLY in English.`,
+                plus: `You are the Plus version of 'Lamp AI'. If asked your name, say 'Lamp AI'. You can create images and drawings. The user's name is '${userName}'. Address them by this name. Respond ONLY in English.`,
+                premium: `You are the Premium version of 'Lamp AI'. If asked your name, say 'Lamp AI'. For music requests, you write lyrics and prepare an audio file. When you receive requests for video, 2D animation, or 3D animation, you state that you cannot generate video files directly, but instead prepare the request as a detailed script or scene descriptions in text format. The user's name is '${userName}'. Address them by this name. Respond ONLY in English.`
+            },
+            de: {
+                free: `Du bist die Basisversion von 'Lamp AI'. Wenn du nach deinem Namen gefragt wirst, sage 'Lamp AI'. Der Name des Benutzers ist '${userName}'. Sprich sie mit diesem Namen an. Antworte NUR auf Deutsch.`,
+                plus: `Du bist die Plus-Version von 'Lamp AI'. Wenn du nach deinem Namen gefragt wirst, sage 'Lamp AI'. Du kannst Bilder und Zeichnungen erstellen. Der Name des Benutzers ist '${userName}'. Sprich sie mit diesem Namen an. Antworte NUR auf Deutsch.`,
+                premium: `Du bist die Premium-Version von 'Lamp AI'. Wenn du nach deinem Namen gefragt wirst, sage 'Lamp AI'. Bei Musikanfragen schreibst du Liedtexte und erstellst eine Audiodatei. Wenn du Anfragen für Videos, 2D-Animationen oder 3D-Animationen erhältst, gibst du an, dass du keine Videodateien direkt erstellen kannst, sondern die Anfrage stattdessen als detailliertes Skript oder Szenenbeschreibungen in Textform vorbereitest. Der Name des Benutzers ist '${userName}'. Sprich sie mit diesem Namen an. Antworte NUR auf Deutsch.`
+            }
+        };
+
+        const systemPrompt = prompts[currentLanguage][activePlan];
+        
+        const needsImage = (activePlan === 'plus' || activePlan === 'premium') && ['image', 'draw', 'picture', 'photo', 'resim', 'çiz', 'fotoğraf', 'görsel', 'Bild', 'zeichnen'].some(kw => lowerCaseInput.includes(kw));
+        const needsAudio = activePlan === 'premium' && ['müzik', 'şarkı', 'rap', 'türkü', 'ses', 'music', 'song', 'audio', 'Musik', 'Lied'].some(kw => lowerCaseInput.includes(kw));
+        
+        if (needsAudio) {
+            apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            const lyricsPrompt = `Kullanıcının adı '${userName}'. Ona ismiyle hitap et. Kullanıcının isteği: "${userInput}". Bu isteğe uygun şarkı sözlerini yaz ve sonra bu sözleri seslendir.`;
+            payload = {
+                contents: [{ parts: [{ text: lyricsPrompt }] }],
+                generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } } },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+        } else if (needsImage) {
+            apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+            payload = {
+                contents: [{ parts: [{ text: userInput }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+            };
+        } else { // This handles both text and other requests
+            apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            payload = {
+                contents: [{ parts: [{ text: userInput }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+        }
+
+        try {
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            const result = await response.json();
+            const candidate = result.candidates?.[0];
+            let responseHtml = "";
+            if (candidate?.content?.parts) {
+                for (const part of candidate.content.parts) {
+                    if (part.text) {
+                        responseHtml += part.text.replace(/\n/g, '<br>');
+                    } else if (part.inlineData?.data) {
+                        const mimeType = part.inlineData.mimeType;
+                        const base64Data = part.inlineData.data;
+                        if (mimeType.startsWith("image/")) {
+                            const imageUrl = `data:${mimeType};base64,${base64Data}`;
+                            responseHtml += `<img src="${imageUrl}" class="rounded-lg mt-2">`;
+                        } else if (mimeType.startsWith("audio/")) {
+                            const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                            const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
+                            const pcmData = base64ToArrayBuffer(base64Data);
+                            const pcm16 = new Int16Array(pcmData);
+                            const wavBlob = pcmToWav(pcm16, sampleRate);
+                            const audioUrl = URL.createObjectURL(wavBlob);
+                            responseHtml += `<audio controls src="${audioUrl}" class="w-full mt-2"></audio>`;
+                        }
+                    }
+                }
+            }
+            const finalResponse = responseHtml || "Bir hata oluştu.";
+            
+            placeholderContainer.remove();
+            const activeChat = chats.find(c => c.id === activeChatId);
+            if (activeChat) {
+                const lastMessage = activeChat.messages[activeChat.messages.length - 1];
+                if (lastMessage && lastMessage.content === '...') {
+                    activeChat.messages.pop();
+                }
+            }
+            addMessage(finalResponse, 'ai');
+
+        } catch (error) {
+            console.error(error);
+            const errorResponse = "API'de bir sorun oluştu.";
+            placeholderContainer.remove();
+            const activeChat = chats.find(c => c.id === activeChatId);
+            if (activeChat) {
+                const lastMessage = activeChat.messages[activeChat.messages.length - 1];
+                if (lastMessage && lastMessage.content === '...') {
+                    activeChat.messages.pop();
+                }
+            }
+            addMessage(errorResponse, 'ai');
+        }
+    }
+
+    // --- SES İŞLEME YARDIMCI FONKSİYONLARI ---
+    function base64ToArrayBuffer(base64) {
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    function pcmToWav(pcmData, sampleRate) {
+        const numChannels = 1;
+        const bitsPerSample = 16;
+        const blockAlign = (numChannels * bitsPerSample) / 8;
+        const byteRate = sampleRate * blockAlign;
+        const dataSize = pcmData.length * (bitsPerSample / 8);
+        const buffer = new ArrayBuffer(44 + dataSize);
+        const view = new DataView(buffer);
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + dataSize, true);
+        writeString(view, 8, 'WAVE');
+        writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitsPerSample, true);
+        writeString(view, 36, 'data');
+        view.setUint32(40, dataSize, true);
+
+        for (let i = 0; i < pcmData.length; i++) {
+            view.setInt16(44 + i * 2, pcmData[i], true);
+        }
+
+        return new Blob([view], { type: 'audio/wav' });
+    }
+
+    // --- INITIALIZATION ---
+    function initializeApp() {
+        loadSettingsFromStorage();
+    }
+    document.addEventListener('DOMContentLoaded', initializeApp);
+
+    </script>
+</body>
+</html>
+
