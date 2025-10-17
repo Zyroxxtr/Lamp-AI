@@ -791,14 +791,12 @@
     // --- API İLETİŞİMİ ---
     async function getAIResponse(userInput) {
         addMessage('...', 'ai'); 
-        const placeholderContainer = chatWindow.lastChild; 
         
         const lowerCaseInput = userInput.toLowerCase();
         if (['adın ne', 'ismin ne', 'sen kimsin', 'what is your name', 'who are you', 'wie ist dein name', 'wer bist du'].some(q => lowerCaseInput.includes(q))) {
             const aiResponse = "Ben Lamp AI.";
-            placeholderContainer.remove();
             updateLastMessage(aiResponse);
-            renderMessage(aiResponse, 'ai');
+            displayActiveChat();
             return;
         }
 
@@ -807,8 +805,8 @@
         
         const activeChat = chats.find(c => c.id === activeChatId);
         const history = activeChat ? activeChat.messages
-            .filter(m => m.sender === 'user' || (m.sender === 'ai' && m.content !== '...'))
-            .slice(0, -1) 
+            .filter(m => m.content !== '...') // Filter out placeholders
+            .slice(0, -1) // Remove the current user input from history being sent
             .map(m => ({
                 role: m.sender === 'user' ? 'user' : 'model',
                 parts: [{ text: m.content.replace(/<[^>]*>?/gm, '') }] 
@@ -894,14 +892,12 @@
             }
             const finalResponse = responseHtml || "Bir hata oluştu.";
             
-            placeholderContainer.remove();
             updateLastMessage(finalResponse);
             displayActiveChat();
 
         } catch (error) {
             console.error(error);
             const errorResponse = "API'de bir sorun oluştu.";
-            placeholderContainer.remove();
             updateLastMessage(errorResponse);
             displayActiveChat();
         }
