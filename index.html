@@ -73,7 +73,6 @@
 
     <div class="w-full max-w-2xl h-full max-h-[700px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl relative overflow-hidden">
 
-        <!-- Ana Menü Ekranı -->
         <div id="home-screen" class="screen flex flex-col items-center justify-center p-8">
             <div class="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-5xl mb-6 shadow-xl animated-gradient ring-4 ring-white/10 dark:ring-black/20">
                 AI
@@ -86,7 +85,6 @@
             </div>
         </div>
 
-        <!-- Sohbet Ekranı -->
         <div id="chat-screen" class="screen hidden flex flex-col">
             <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
@@ -107,7 +105,10 @@
                 </div>
             </div>
             <div id="chat-window" class="flex-grow p-6 overflow-y-auto scrollbar-hide space-y-4">
-            </div>
+                </div>
+            
+            <div id="typing-indicator" class="px-6 pb-2 text-sm text-gray-500 dark:text-gray-400 h-8">
+                </div>
             <div class="p-5 border-t border-gray-200 dark:border-gray-700">
                 <form id="message-form" class="flex items-center space-x-4">
                     <input type="text" id="message-input" data-lang-key="message_placeholder" placeholder="Mesajınızı buraya yazın..." autocomplete="off" class="flex-grow p-3 bg-gray-100 dark:bg-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -118,7 +119,6 @@
             </div>
         </div>
 
-        <!-- Ayarlar Ekranı -->
         <div id="settings-screen" class="screen hidden flex flex-col p-8 items-center">
              <div class="w-full flex items-center mb-10">
                 <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="home-screen">
@@ -171,7 +171,6 @@
             </div>
         </div>
 
-        <!-- Sohbetlerim Ekranı -->
         <div id="my-chats-screen" class="screen hidden flex flex-col p-8">
             <div class="w-full flex items-center mb-6">
                 <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="settings-screen">
@@ -180,11 +179,9 @@
                 <h2 class="text-2xl font-bold" data-lang-key="my_chats">Sohbetlerim</h2>
             </div>
             <ul id="chat-list" class="space-y-2 overflow-y-auto">
-                <!-- Sohbetler buraya eklenecek -->
-            </ul>
+                </ul>
         </div>
 
-        <!-- Diller Ekranı -->
         <div id="language-screen" class="screen hidden flex flex-col p-8 items-center">
             <div class="w-full flex items-center mb-10">
                <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="settings-screen">
@@ -199,7 +196,6 @@
             </div>
         </div>
         
-        <!-- Üyelikler Ekranı -->
         <div id="membership-screen" class="screen hidden flex flex-col p-8">
             <div class="w-full flex items-center mb-6">
                 <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="settings-screen">
@@ -224,7 +220,6 @@
             </div>
         </div>
 
-        <!-- Profil Ekranı -->
         <div id="profile-screen" class="screen hidden flex flex-col p-8 items-center">
              <div class="w-full flex items-center mb-10">
                 <button class="back-button text-gray-500 hover:text-gray-700 mr-4" data-target="settings-screen">
@@ -291,6 +286,8 @@
     const saveConfirmMsg = document.getElementById('save-confirm-msg');
     const rgbToggleContainer = document.getElementById('rgb-toggle-container');
     const rgbToggle = document.getElementById('rgb-toggle');
+    // Typing indicator referansı eklendi
+    const typingIndicator = document.getElementById('typing-indicator');
 
 
     // --- STATE (DURUM) YÖNETİMİ ---
@@ -728,18 +725,8 @@
         }
         renderMessage(content, sender);
     }
-    
-    function updateLastMessage(content) {
-         const activeChat = chats.find(c => c.id === activeChatId);
-         if(activeChat && activeChat.messages.length > 0) {
-            const lastMessage = activeChat.messages[activeChat.messages.length - 1];
-            if(lastMessage.sender === 'ai') {
-                lastMessage.content = content;
-                saveChatsToStorage();
-            }
-         }
-    }
 
+    // updateLastMessage fonksiyonu artık kullanılmadığı için kaldırıldı.
 
     messageForm.addEventListener('submit', function (event) {
         event.preventDefault();
@@ -788,19 +775,23 @@
         return false;
     }
 
-    // --- API İLETİŞİMİ ---
+    // --- API İLETİŞİMİ (TAMAMEN GÜNCELLENDİ) ---
     async function getAIResponse(userInput) {
-        addMessage('...', 'ai'); 
-        
+        // Gösterge elementini al (Her seferinde yeniden seçmek yerine global referansı kullan)
+        // const indicator = document.getElementById('typing-indicator'); // -> Global 'typingIndicator' kullanılıyor
+
         const lowerCaseInput = userInput.toLowerCase();
+        
         if (['adın ne', 'ismin ne', 'sen kimsin', 'what is your name', 'who are you', 'wie ist dein name', 'wer bist du'].some(q => lowerCaseInput.includes(q))) {
             const aiResponse = "Ben Lamp AI.";
-            updateLastMessage(aiResponse);
-            displayActiveChat();
+            addMessage(aiResponse, 'ai'); // Doğrudan cevabı ekle
             return;
         }
 
-        const apiKey = "AIzaSyCYH_zElCg645hjC-n7ER-K8UBdQF7fcxc";
+        // Kendi API adresiniz (Yerel test için)
+        // Eğer sunucuya yüklerseniz bu adresi değiştirmeniz gerekir.
+        const baseApiUrl = "http://127.0.0.1:8000";
+
         let apiUrl, payload;
         
         const activeChat = chats.find(c => c.id === activeChatId);
@@ -829,45 +820,77 @@
                 premium: `Du bist die Premium-Version von 'Lamp AI'. Wenn du nach deinem Namen gefragt wirst, sage 'Lamp AI'. Bei Musikanfragen schreibst du Liedtexte und erstellst eine Audiodatei. Bei Video-/Animationsanfragen schreibe ein detailliertes Skript. Verwende den bereitgestellten Gesprächsverlauf, um den Kontext zu verstehen. Der Name des Benutzers ist '${userName}'. Sprich sie mit diesem Namen an. Antworte NUR auf Deutsch.`
             }
         };
-
+        
         const systemPrompt = prompts[currentLanguage][activePlan];
         
         const needsImage = (activePlan === 'plus' || activePlan === 'premium') && ['image', 'draw', 'picture', 'photo', 'resim', 'çiz', 'fotoğraf', 'görsel', 'Bild', 'zeichnen'].some(kw => lowerCaseInput.includes(kw));
         const needsAudio = activePlan === 'premium' && ['müzik', 'şarkı', 'rap', 'türkü', 'ses', 'music', 'song', 'audio', 'Musik', 'Lied'].some(kw => lowerCaseInput.includes(kw));
         
+        // Araştırma Gerekip Gerekmediğini Kontrol Et
+        const researchKeywords = ['kimdir', 'nedir', 'nerede', 'ne zaman', 'araştır', 'bana bul', 'what is', 'who is', 'where is', 'when is', 'research', 'find me', 'kac', 'kaç'];
+        const needsResearch = researchKeywords.some(kw => lowerCaseInput.includes(kw));
+
         const currentContent = { role: 'user', parts: [{ text: userInput }] };
         const fullContents = [...history, currentContent];
 
+
+        // API URL'sini, Payload'u ve Gösterge Metnini Ayarla
         if (needsAudio) {
-            apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-            const lyricsPrompt = `Konuşma geçmişini dikkate al. Kullanıcının adı '${userName}'. Ona ismiyle hitap et. Kullanıcının son isteği: "${userInput}". Bu isteğe uygun şarkı sözlerini yaz ve sonra bu sözleri seslendir.`;
-            payload = {
-                contents: [{ parts: [{ text: lyricsPrompt }] }],
-                generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } } },
-                model: "gemini-2.5-flash-preview-tts"
+            console.warn("Ses isteği proxy'de henüz desteklenmiyor.");
+             typingIndicator.innerHTML = '<em>Ses isteği işleniyor...</em>';
+             apiUrl = `${baseApiUrl}/chat`; // TODO: Ses proxy'si eklenmeli
+             payload = {
+                contents: fullContents,
+                systemInstruction: { parts: [{ text: systemPrompt }] },
             };
+
         } else if (needsImage) {
-            apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+            console.log("Resim oluşturma isteği gönderiliyor...");
+            typingIndicator.innerHTML = '<em>Resim oluşturuluyor...</em>';
+            apiUrl = `${baseApiUrl}/generate-image`;
             payload = {
                 contents: fullContents,
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
             };
-        } else { // This handles both text and other requests
-            apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        } else if (needsResearch) {
+            // Araştırma gerekiyorsa "Düşünüyor" de ve 'tools' ekle
+            typingIndicator.innerHTML = '<em>Düşünüyor (Araştırılıyor)...</em>';
+            apiUrl = `${baseApiUrl}/chat`;
             payload = {
                 contents: fullContents,
-                tools: [{ "google_search": {} }],
+                tools: [{ "google_search": {} }], // <-- ARAŞTIRMA ARACI
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+        } else {
+            // Normal metin ise "Yazıyor" de
+            typingIndicator.innerHTML = '<em>Yazıyor...</em>';
+            apiUrl = `${baseApiUrl}/chat`;
+            payload = {
+                contents: fullContents,
                 systemInstruction: { parts: [{ text: systemPrompt }] },
             };
         }
 
         try {
-            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            const response = await fetch(apiUrl, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(payload) 
+            });
+            
+            // Göstergeyi temizle (cevap geldi)
+            typingIndicator.innerHTML = '';
+
+            if (!response.ok) {
+                 const errorData = await response.json();
+                 throw new Error(`API Error (${response.status}): ${errorData.detail || 'Bilinmeyen hata'}`);
+            }
+            
             const result = await response.json();
             const candidate = result.candidates?.[0];
             let responseHtml = "";
+            
             if (candidate?.content?.parts) {
                 for (const part of candidate.content.parts) {
                     if (part.text) {
@@ -890,18 +913,19 @@
                     }
                 }
             }
-            const finalResponse = responseHtml || "Bir hata oluştu.";
             
-            updateLastMessage(finalResponse);
-            displayActiveChat();
+            const finalResponse = responseHtml || "Bir hata oluştu.";
+            addMessage(finalResponse, 'ai'); // <-- Cevabı yeni mesaj olarak ekle
 
         } catch (error) {
+            // Hata durumunda da göstergeyi temizle
+            typingIndicator.innerHTML = '';
             console.error(error);
-            const errorResponse = "API'de bir sorun oluştu.";
-            updateLastMessage(errorResponse);
-            displayActiveChat();
+            const errorResponse = `API'de bir sorun oluştu: ${error.message}`;
+            addMessage(errorResponse, 'ai'); // <-- Hata mesajını yeni olarak ekle
         }
     }
+
 
     // --- SES İŞLEME YARDIMCI FONKSİYONLARI ---
     function base64ToArrayBuffer(base64) {
@@ -959,5 +983,3 @@
     </script>
 </body>
 </html>
-
-
